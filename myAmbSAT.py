@@ -1,5 +1,5 @@
 """
-myAmbSAT-Brwn.py
+myAmbSAT.py
 
 2020 Sayyor Yusupov
 A module to implement Amoeba-inspired AmoebaSAT Brownian algorithm for
@@ -10,25 +10,27 @@ solving Boolean Satisfiability Problem.
 # Standard library
 import random
 
-def user_input():
+def user_input(filename):
     """Open the file defined by the user and store all clauses and number
     of variables from the file appropriately
+    
+    Args:
+        filename(string): name of the file which describes the function
     
     Returns:
         clauses (list): stores each clause as a list of strings
         n_vars (int): number of variables in the function
     """
-    string = 'Please indicate the destination of the file: '
-    file_name = input(string)
     # writing each clause as a list inside one list
     clauses = []
-    with open(file_name) as f:
+    with open(filename) as f:
         for line in f:
             if len(line)!=0:
                 if line[0] == 'p':
                     # number of variables as indicated in the file
                     n_vars = int(line.split()[2])
                 elif line[0] not in ('c','%'):
+                    # lines which contain states for clauses
                     clause = []
                     for n in line.split(" "):
                         if n != "0\n":
@@ -115,8 +117,9 @@ def create_CONTRA(INTER):
                 done+=var
     return CONTRA
 
-def run_Z(Z):
-    """Generate random real numbers for each unit
+def run_Brownian_Z(Z):
+    """Generate random real numbers from the interval (0.0, 1.0)
+    for each unit (based on AmoebaSAT-Brownian)
     
     Args:
         Z (dict): previous Z-values of each unit
@@ -128,11 +131,33 @@ def run_Z(Z):
         Z[var] = random.random()
     return Z
 
+def run_Logistic_Z(Z, count):
+    """Generate numbers based on logistic map (AmoebaSAT)
+    
+    Args:
+        Z (dict): previous Z-values of each unit
+        count (int): number of iterations made
+        
+    Returns:
+        Z (dict): new Z-values of each unit
+    """
+    if count == 1: # defining randomly initial Z-states
+        for var in Z:
+            Z[var] = random.random()
+    else: # applying logistic map for any other iteration
+        for var in Z:
+            previous = Z[var]
+            Z[var] = 4*previous*(1-previous)
+    return Z
+
 def run_Y(Y, Z, e, L):
     """Determine supply or non-supply of resources for each unit
     
     Args:
         Y (dict): previous Y-values of each unit
+        Z (dict): current Z-values of each unit
+        e (int): parameter eta
+        L (dict): previous L-values of each unit
     
     Returns:
         Y (dict): new Y-values of each unit
@@ -150,6 +175,7 @@ def run_X(X,Y):
     
     Args:
         X (dict): previous X-values of each unit
+        Y (dict): current Z-values of each unit
         
     Returns:
         X (dict): new X-values of each unit
@@ -167,7 +193,7 @@ def run_L(X,L,INTRA,INTER,CONTRA):
 
     Args:
         X (dict): current X-values of each unit
-        L (dict): previousi L-values of each unit
+        L (dict): previous L-values of each unit
         INTRA (list): stores each INTRA rule as a list of strings
         INTER (list): stores each INTER rule with P and Q as elements
         CONTRA (list): stores each CONTRA rule as a list of strings
@@ -278,9 +304,20 @@ def check_solution(clauses,x):
     string += str(satisf)+"/"+str(no_satisf)
     print(string)
 
-def main():
-    """The main function which combines all other functions"""
-    clauses, n_vars = user_input()
+def main(*args, **kwargs): 
+    """The main function which combines all other functions
+    
+    Args:
+        type_of_Z (string): which function to run for defining Z-states
+        e (int): parameter eta for tuning Y-states
+    """
+    if "filename" not in kwargs:
+        string = 'Please indicate the path of the file: '
+        filename = input(string)
+    else:
+        filename = kwargs["filename"]
+    clauses, n_vars = user_input(filename)
+    e = kwargs["e"]
     X={}
     Y={}
     Z={}
@@ -304,15 +341,26 @@ def main():
 
     count=0
     solved = False
-    e=0.1 # parameter eta which can be changed
-    while not solved:
-        count+=1
-        Z = run_Z(Z)
-        Y = run_Y(Y,Z,e,L)
-        X = run_X(X,Y)
-        L = run_L(X,L,INTRA,INTER,CONTRA)
-        x = run_x(x,X)
-        solved = check_solved(X,L)
+    
+    if kwargs["type_of_Z"] == "logistic":
+        while not solved:
+            count+=1
+            Z = run_Logistic_Z(Z, count)
+            Y = run_Y(Y,Z,e,L)
+            X = run_X(X,Y)
+            L = run_L(X,L,INTRA,INTER,CONTRA)
+            x = run_x(x,X)
+            solved = check_solved(X,L)
+    
+    elif kwargs["type_of_Z"] == "brownian":
+        while not solved:
+            count+=1
+            Z = run_Brownian_Z(Z)
+            Y = run_Y(Y,Z,e,L)
+            X = run_X(X,Y)
+            L = run_L(X,L,INTRA,INTER,CONTRA)
+            x = run_x(x,X)
+            solved = check_solved(X,L)
 
     # outputing resulting states of the variables
     string = ""
@@ -325,4 +373,4 @@ def main():
     check_solution(clauses,x)
 
 if __name__ == "__main__":
-    main()
+    main(type_of_Z = "logistic", e = 0.1)
