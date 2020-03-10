@@ -106,7 +106,7 @@ def create_CONTRA(INTER):
     done=[] # for storing units which were already considered
     for var in out_reps:
         if var[-1]=='1':
-            if var not in done:
+            if var not in done and var[:-1]+"0" in out_reps: #there might no opposing rules
                 for i in out_reps[var]:
                     for j in out_reps[var[:-1]+'0']: #the opposite unit
                         # adding the two Ps
