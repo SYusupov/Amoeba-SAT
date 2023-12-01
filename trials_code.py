@@ -406,7 +406,7 @@ import csv
 import os
 import time
 import multiprocessing
-main_foldername = "trials20-91"
+main_foldername = "uf20-91-1"
 n_trials = 500
 es = [0.05,0.1,0.15,0.2,0.25]
 cwd = os.getcwd()
